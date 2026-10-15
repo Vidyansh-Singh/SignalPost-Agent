@@ -1,0 +1,2 @@
+# No third-party dependencies. Python 3.11+ standard library only.
+# Nothing to pin or install; `python run.py ...` works on a clean machine.

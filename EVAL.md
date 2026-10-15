@@ -1,0 +1,5 @@
+# Evaluation
+- Offline tests (no network): `python -m unittest discover -s tests` (29 tests): organisation-number checksum, claim contract, identity gate (lookalike domains, location/legal-form/RDAP/privacy-page proofs), wrong-company rejection, network-down handling, per-company timeout, batch size invariants, refresh diffs, previous-snapshot seeding, unsafe URLs, budgets, viewer rendering.
+- Live smoke test: `reports/` holds the 100-company batch (starter-kit selector, seed 20260823) and the run report/envelopes. The report states inputs, envelopes, distinct organisations, silent drops, contract issues, runtime, requests, cost and per-family hit rates.
+- Pass criteria: envelopes == inputs == expected count, no duplicates, 0 contract issues, exit code 0.
+- Precision audit: after the first smoke run, every published website was reviewed by name, municipality and match method; looser matches were removed (see IDENTITY_RESOLUTION.md). No hand-labelled gold set or recall measurement is included; hit rates are fractions of companies with at least one available claim in a family, not recall against the hidden reference.
