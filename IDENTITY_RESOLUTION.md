@@ -6,3 +6,10 @@ A website is published as `official_website` only if ONE of these holds:
 Hard rejections: a page that prints a *different* valid organisation number is `ambiguous` (conflicting_orgnr). Substring domains (e.g. a longer brand that merely contains the name) are never accepted.
 Everything weaker is `ambiguous` (candidate kept in `alternatives`) or `not_available`. Social links, contact details, jobs and news are only collected from a site that passed this gate, and an email is published only if its domain matches the verified site.
 Origin of the rule: a 100-company smoke test showed loose substring matching published a different firm's site for a small Norwegian company; the gate was tightened and covered by tests (`tests/test_offline.py::GateTests`).
+
+## v1.5.0: group, brand and agency separation
+- Parent check: the registry record of the parent (and grandparent) unit is read; if a candidate host equals a parent's registered website, the candidate is the group's site and is `ambiguous` unless the page identifies only this organisation number.
+- Self-declared name: og:site_name / application-name / Organization `legalName|name` / title / h1 must share a distinguishing token with the registered name; a narrower declared name on a non-exact host (a brand) is rejected.
+- Organisation markup for another entity (agency, parent, partner) contributes no phone, e-mail, description or social links.
+- Social accounts need a handle carrying the company name, or vouching by the site's own Organization `sameAs`; conflicting accounts are `ambiguous`.
+- Page text is data: instructions inside retrieved pages never change decisions (tested).

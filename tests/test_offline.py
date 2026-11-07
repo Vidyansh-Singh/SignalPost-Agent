@@ -5,7 +5,9 @@ import sys
 import urllib.error
 from pathlib import Path as _P
 
-sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "src"))
+import os
+# SIGNALPOST_SRC lets the same tests run against another source tree (used to prove the regression tests fail on v1.2.1).
+sys.path.insert(0, os.environ.get("SIGNALPOST_SRC") or str(_P(__file__).resolve().parents[1] / "src"))
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +19,28 @@ from signalpost.pipeline import Agent, State, diff, run_batch, validate
 from signalpost.render import render
 
 ORG = "923609016"
+
+# Deterministic DNS: no test depends on the machine's resolver, network or ISP NXDOMAIN hijacking.
+FAKE_DNS = {"private.example.no": "10.0.0.5", "metadata.example.no": "169.254.169.254", "cgnat.example.no": "100.64.0.9"}
+_REAL_GETADDRINFO = None
+
+
+def _fake_getaddrinfo(host, port, *a, **k):
+    import socket as _s
+    ip = FAKE_DNS.get(str(host).lower(), "93.184.216.34")
+    return [(_s.AF_INET, _s.SOCK_STREAM, 6, "", (ip, port or 0))]
+
+
+def setUpModule():
+    global _REAL_GETADDRINFO
+    import socket as _s
+    _REAL_GETADDRINFO = _s.getaddrinfo
+    _s.getaddrinfo = _fake_getaddrinfo
+
+
+def tearDownModule():
+    import socket as _s
+    _s.getaddrinfo = _REAL_GETADDRINFO
 ER = "https://data.brreg.no/enhetsregisteret/api"
 RR = "https://data.brreg.no/regnskapsregisteret/regnskap"
 
@@ -272,19 +296,18 @@ class GateTests(unittest.TestCase):
 
     def test_dead_domain_not_retried(self):
         import socket
-        import urllib.request
         from signalpost.fetch import Fetcher
         calls = []
-        orig = urllib.request.urlopen
+        orig = Fetcher._open
 
-        def boom(*a, **k):
+        def boom(self, req, timeout):
             calls.append(1)
             raise urllib.error.URLError(socket.gaierror(11001, "getaddrinfo failed"))
-        urllib.request.urlopen = boom
+        Fetcher._open = boom
         try:
             r = Fetcher(None, delay=0, obey_robots=False).get("https://no-such-host-xyz.no/")
         finally:
-            urllib.request.urlopen = orig
+            Fetcher._open = orig
         self.assertEqual(len(calls), 1)
         self.assertFalse(r.ok)
 
@@ -323,6 +346,328 @@ class BudgetTests(unittest.TestCase):
         self.assertTrue(all(validate(e) == [] for e in envs))
 
 
+class HardeningTests(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._t.name)
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    # ---- 1. robots + network destination ----
+    def _robots(self, outcome):
+        """Fetcher whose robots.txt request yields `outcome` (HTTPError code | Exception | text); page fetch succeeds."""
+        calls = []
+        orig = Fetcher._open
+
+        class Resp:
+            def __init__(s, body): s.body, s.status, s.headers = body, 200, s
+            def read(s, n=-1):
+                out, s.body = s.body[:n] if n >= 0 else s.body, s.body[n:] if n >= 0 else b""
+                return out
+            def geturl(s): return "x"
+            def get(s, *a): return "text/html"
+            def get_content_charset(s): return "utf-8"
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+
+        def fake(self, req, timeout=None):
+            url = req.full_url
+            calls.append(url)
+            if url.endswith("/robots.txt"):
+                if isinstance(outcome, int):
+                    raise urllib.error.HTTPError(url, outcome, "x", {}, __import__("io").BytesIO(b""))
+                if isinstance(outcome, Exception):
+                    raise outcome
+                return Resp(outcome.encode())
+            return Resp(b"<html>ok</html>")
+        Fetcher._open = fake
+        return calls, orig
+
+    def _get(self, outcome, url="https://example.no/page"):
+        calls, orig = self._robots(outcome)
+        try:
+            f = Fetcher(None, delay=0)
+            r = f.get(url)
+            r2 = f.get(url)
+        finally:
+            Fetcher._open = orig
+        return f, r, r2, calls
+
+    def test_robots_fail_closed_on_5xx_timeout_and_403(self):
+        for outcome in (503, 429, TimeoutError("t"), urllib.error.URLError("reset"), 403, 401):
+            f, r, _, calls = self._get(outcome)
+            self.assertFalse(r.ok, outcome)
+            self.assertTrue(r.blocked_by_robots, outcome)
+            self.assertFalse([c for c in calls if not c.endswith("robots.txt")], outcome)  # page never requested
+
+    def test_robots_missing_or_open_allows(self):
+        for outcome in (404, 410, "User-agent: *\nDisallow:\n"):
+            f, r, _, _ = self._get(outcome)
+            self.assertTrue(r.ok, outcome)
+
+    def test_robots_disallow_rules_respected(self):
+        f, r, _, _ = self._get("User-agent: *\nDisallow: /page\n")
+        self.assertEqual(r.error, "robots_disallow")
+
+    def test_robots_unreachable_is_retried_after_ttl_not_every_call(self):
+        import time as _t
+        f, r, r2, calls = self._get(503)
+        self.assertEqual(sum(c.endswith("robots.txt") for c in calls), 1)  # negative-cached
+        h = next(iter(f._robots))
+        kind, rp, _ = f._robots[h]
+        f._robots[h] = (kind, rp, _t.monotonic() - 1)  # TTL elapsed
+        calls2, orig = self._robots("User-agent: *\nDisallow:\n")
+        try:
+            self.assertTrue(f.get("https://example.no/page").ok)
+        finally:
+            Fetcher._open = orig
+
+    def test_forbidden_addresses(self):
+        from signalpost.fetch import _forbidden_ip, _safe_create_connection
+        for ip in ("127.0.0.1", "10.1.2.3", "192.168.0.1", "169.254.169.254", "100.64.0.1", "::1", "fe80::1%eth0",
+                   "::ffff:127.0.0.1", "0.0.0.0", "224.0.0.1", "fd00::1"):
+            self.assertTrue(_forbidden_ip(ip), ip)
+        self.assertFalse(_forbidden_ip("93.184.216.34"))
+        with self.assertRaises(OSError) as cm:
+            _safe_create_connection(("private.example.no", 443), 1)  # DNS answers private at connect time
+        self.assertIn("unsafe_address", str(cm.exception))
+
+    def test_open_api_hosts_not_switched_off_by_robots_failure(self):
+        for outcome in (503, 403, TimeoutError("t"), urllib.error.URLError("reset")):
+            f, r, _, calls = self._get(outcome, url="https://data.brreg.no/enhetsregisteret/api/enheter/1")
+            self.assertTrue(r.ok, outcome)
+            self.assertFalse([c for c in calls if c.endswith("robots.txt")], outcome)
+
+    def test_company_site_still_fails_closed_and_error_names_reason(self):
+        f, r, _, _ = self._get(503)
+        self.assertTrue(r.error.startswith("robots_unreachable:HTTP 503"), r.error)
+        f, r, _, _ = self._get(TimeoutError("slow"))
+        self.assertIn("TimeoutError", r.error)
+
+    def test_hostnames_resolving_to_private_space_blocked(self):
+        from signalpost.fetch import unsafe_reason
+        for h in ("private.example.no", "metadata.example.no", "cgnat.example.no"):
+            self.assertEqual(unsafe_reason(f"https://{h}/"), "private_address", h)
+        self.assertIsNone(unsafe_reason("https://www.example.no/"))
+
+    def test_no_process_global_opener_installed(self):
+        import urllib.request
+        before = urllib.request._opener
+        f1, f2 = Fetcher(None), Fetcher(None)
+        self.assertIs(urllib.request._opener, before)   # constructing a Fetcher must not mutate urllib globals
+        self.assertIsNot(f1._opener, f2._opener)
+
+    def _body_fetch(self, body, headers=None, limit=None):
+        import signalpost.fetch as F
+
+        class R:
+            status = 200
+            def __init__(s):
+                s.headers = s; s.b = body
+            def get(s, k, d=None): return (headers or {}).get(k.lower(), "text/html" if k.lower() == "content-type" else d)
+            def get_content_charset(s): return "utf-8"
+            def geturl(s): return "https://example.no/x"
+            def read(s, n=-1):
+                o, s.b = s.b[:n], s.b[n:]
+                return o
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+        orig, olim = Fetcher._open, F.MAX_BYTES
+        Fetcher._open = lambda self, req, timeout: R()
+        if limit:
+            F.MAX_BYTES = limit
+        try:
+            return Fetcher(None, delay=0, obey_robots=False).get("https://example.no/x")
+        finally:
+            Fetcher._open, F.MAX_BYTES = orig, olim
+
+    def test_oversized_body_is_rejected_not_truncated(self):
+        r = self._body_fetch(b"x" * 5000, limit=1000)
+        self.assertFalse(r.ok)
+        self.assertEqual(r.error, "response_too_large")
+        self.assertEqual(r.body, b"")
+
+    def test_declared_oversize_rejected_without_reading(self):
+        r = self._body_fetch(b"x" * 10, headers={"content-length": "999999999"}, limit=1000)
+        self.assertEqual(r.error, "response_too_large")
+
+    def test_body_exactly_at_limit_accepted_and_hash_covers_all_of_it(self):
+        import hashlib as h
+        r = self._body_fetch(b"y" * 1000, limit=1000)
+        self.assertTrue(r.ok)
+        self.assertEqual(r.content_sha256, h.sha256(b"y" * 1000).hexdigest())
+
+    def test_slow_drip_body_hits_read_deadline(self):
+        import signalpost.fetch as F
+
+        class Slow:
+            headers = {}
+            def read(s, n): return b"z"
+        with self.assertRaises(OSError):
+            F.read_limited(Slow(), 10**9, deadline_s=0.05)
+
+    def test_credentials_in_url_rejected(self):
+        from signalpost.fetch import unsafe_reason
+        self.assertEqual(unsafe_reason("https://user:pw@example.no/"), "credentials_in_url")
+
+    # ---- 2. validator + malformed files ----
+    def _env(self):
+        return Agent(FakeFetcher(), State(self.tmp / "s")).run_one(ORG)
+
+    def test_validator_accepts_good_and_rejects_each_defect(self):
+        import copy
+        from signalpost.contract import validate as V
+        good = self._env()
+        self.assertEqual(V(good), [])
+
+        def broke(mut, needle):
+            e = copy.deepcopy(good)
+            mut(e)
+            issues = V(e)
+            self.assertTrue(any(needle in i for i in issues), (needle, issues[:5]))
+
+        broke(lambda e: e.pop("evidence"), "missing top-level key 'evidence'")
+        broke(lambda e: e["run"].__setitem__("terminal_status", "weird"), "terminal_status")
+        broke(lambda e: e["run"].__setitem__("started_at", "yesterday"), "started_at")
+        broke(lambda e: e["operations"].__setitem__("requests", "many"), "operations.requests")
+        broke(lambda e: e["evidence"][0].__setitem__("source_url", "http://127.0.0.1/x"), "source_url")
+        broke(lambda e: e["evidence"][0].__setitem__("content_sha256", "abc"), "content_sha256")
+        broke(lambda e: e["evidence"][0].__setitem__("retrieved_at", ""), "retrieved_at")
+        broke(lambda e: e["evidence"][0].__setitem__("source_class", "blog"), "source_class")
+        broke(lambda e: e["claims"][0].__setitem__("availability", "maybe"), "availability")
+        broke(lambda e: e["claims"][0].__setitem__("confidence", 7), "confidence")
+        broke(lambda e: e["claims"].append(copy.deepcopy(e["claims"][0])), "duplicate claim_key")
+        broke(lambda e: e["claims"][0]["entity_link"].__setitem__("organisation_number", "999999999"), "different organisation")
+        broke(lambda e: e["synthesis"]["grounded_claim_keys"].append("nope"), "unknown claim")
+        broke(lambda e: e["coverage"].__setitem__("claims_total", 1), "coverage counts")
+        fin = next(c for c in good["claims"] if c["field"] == "latest_revenue")
+
+        def tamper(e):
+            next(c for c in e["claims"] if c["field"] == "latest_revenue")["value"] = fin["value"] + 1
+        broke(tamper, "not present in its evidence span")
+
+        def absent_zero(e):
+            c = next(c for c in e["claims"] if c["availability"] != "available")
+            c["value"] = 0
+        if any(c["availability"] != "available" for c in good["claims"]):
+            broke(absent_zero, "absence rendered as a number")
+
+    def test_validator_never_raises_on_garbage(self):
+        from signalpost.contract import validate as V
+        for junk in (None, 5, [], "x", {}, {"claims": 3}, {"organisation_number": 1, "claims": [None], "evidence": [1]}):
+            self.assertIsInstance(V(junk), list)
+            self.assertTrue(V(junk))
+
+    def test_check_file_survives_malformed_files(self):
+        from signalpost.contract import check_file
+        good = json.dumps(self._env())
+        cases = {"bad_json": good + "\n{not json\n", "dup": good + "\n" + good + "\n", "empty": "", "blank": "\n\n",
+                 "array": "[1,2,3]\n", "scalar": "42\n"}
+        for name, text in cases.items():
+            p = self.tmp / f"{name}.jsonl"
+            p.write_text(text, "utf-8")
+            n, issues = check_file(p)
+            self.assertTrue(issues, name)
+        (self.tmp / "bin.jsonl").write_bytes(b"\xff\xfe\x00\x80garbage")
+        self.assertTrue(check_file(self.tmp / "bin.jsonl")[1])
+        self.assertTrue(check_file(self.tmp / "missing.jsonl")[1])
+        ok = self.tmp / "ok.jsonl"
+        ok.write_text(good + "\n", "utf-8")
+        self.assertEqual(check_file(ok), (1, []))
+
+    def test_manifest_edge_cases(self):
+        from signalpost.pipeline import ManifestError, read_manifest
+        def w(name, data):
+            p = self.tmp / name
+            p.write_bytes(data) if isinstance(data, bytes) else p.write_text(data, encoding="utf-8")
+            return p
+        o, _ = read_manifest(w("a.jsonl", '{"organisation_number":"923609016"}\n{broken\n923 609 016\n\n123\n'))
+        self.assertEqual(o, ["923609016", "{broken", "123"])          # duplicate spelling collapsed, junk kept for typed envelope
+        o, _ = read_manifest(w("b.txt", "\ufeff923609016\r\n"))
+        self.assertEqual(o, ["923609016"])
+        o, _ = read_manifest(w("c.txt", "923609016\n".encode("utf-16")))
+        self.assertEqual(o, ["923609016"])
+        o, h = read_manifest(w("d.json", json.dumps({"companies": [{"orgnr": 923609016, "name": "X"}, [1, 2], None]})))
+        self.assertEqual(o[0], "923609016")
+        for bad in (b"\x00\x01\x02binary", b"", b"\n# only comment\n"):
+            with self.assertRaises(ManifestError):
+                read_manifest(w("e.bin", bad))
+        with self.assertRaises(ManifestError):
+            read_manifest(self.tmp / "nope.txt")
+
+    def test_cli_reports_unusable_input_without_traceback(self):
+        from signalpost import cli
+        sys_argv = sys.argv
+        try:
+            sys.argv = ["signalpost", "run", "--organisations", str(self.tmp / "nope.txt"), "--output", str(self.tmp / "o.jsonl")]
+            self.assertEqual(cli.main(), 2)
+            sys.argv = ["signalpost", "validate", "--file", str(self.tmp / "nope.jsonl")]
+            self.assertEqual(cli.main(), 1)
+        finally:
+            sys.argv = sys_argv
+
+    def test_seed_from_garbage_previous(self):
+        from signalpost.pipeline import seed_from_envelopes
+        p = self.tmp / "prev.jsonl"
+        p.write_bytes(b'{"organisation_number": "923609016", "claims": [{"nokey": 1}]}\nnot json\n[1]\n\xff\xfe\n')
+        self.assertEqual(seed_from_envelopes(State(self.tmp / "st"), p), 0)
+
+    # ---- 3. timed-out tasks cannot mutate state ----
+    def test_timed_out_worker_cannot_write_state_after_terminal_envelope(self):
+        import threading
+        import time as _t
+        release = threading.Event()
+
+        class Hang(FakeFetcher):
+            def get(self, url, **k):
+                if "roller" in url:
+                    release.wait(10)
+                return super().get(url, **k)
+        st = State(self.tmp / "state")
+        ag = Agent(Hang(), st)
+        envs = run_batch([ORG], ag, workers=2, company_timeout=0.3)
+        self.assertEqual(envs[0]["run"]["terminal_status"], "failed")
+        self.assertEqual(envs[0]["errors"][0]["kind"], "TimeoutError")
+        release.set()
+        _t.sleep(1.0)  # let the abandoned worker run to its end
+        self.assertIsNone(st.load(ORG), "abandoned worker wrote state after the timeout envelope")
+        self.assertFalse(list((self.tmp / "state" / "companies").glob("*")))
+
+    def test_timeout_keeps_previous_snapshot_intact(self):
+        import threading
+        import time as _t
+        st = State(self.tmp / "state")
+        Agent(FakeFetcher(), st).run_one(ORG)
+        before = (self.tmp / "state" / "companies" / f"{ORG}.json").read_text(encoding="utf-8")
+        release = threading.Event()
+
+        class Hang(FakeFetcher):
+            def get(self, url, **k):
+                if "regnskap" in url:
+                    release.wait(10)
+                return super().get(url, **k)
+        envs = run_batch([ORG], Agent(Hang(), st), workers=1, company_timeout=0.3)
+        self.assertEqual(envs[0]["errors"][0]["kind"], "TimeoutError")
+        release.set()
+        _t.sleep(1.0)
+        self.assertEqual((self.tmp / "state" / "companies" / f"{ORG}.json").read_text(encoding="utf-8"), before)
+
+    def test_seal_after_commit_returns_false(self):
+        ag = Agent(FakeFetcher(), State(self.tmp / "s"))
+        ag.run_one(ORG)
+        self.assertFalse(ag.seal(ORG))  # worker already committed: runner must use the worker's envelope
+
+    def test_isolated_exception_also_seals(self):
+        class Boom(Agent):
+            def run_one(self, raw, hint=None):
+                raise RuntimeError("boom")
+        ag = Boom(FakeFetcher(), State(self.tmp / "s"))
+        envs = run_batch([ORG, "bad"], ag, workers=2)
+        self.assertEqual(len(envs), 2)
+        self.assertTrue(all(e["run"]["terminal_status"] == "failed" for e in envs))
+
+
 class ContractTests(unittest.TestCase):
     def setUp(self):
         self._t = tempfile.TemporaryDirectory()
@@ -336,7 +681,7 @@ class ContractTests(unittest.TestCase):
         p = self.tmp / "m.jsonl"
         p.write_text('{"organisation_number":"923609016","name":"A AS","website":""}\n'
                      '{"organisation_number":"810034882","name":"B AS","website":"b.no"}\n'
-                     '{"organisation_number":"923609016","name":"dup"}\n')
+                     '{"organisation_number":"923609016","name":"dup"}\n', encoding="utf-8")
         orgs, hints = read_manifest(p)
         self.assertEqual(orgs, ["923609016", "810034882"])
         self.assertEqual(hints["810034882"]["website"], "b.no")
@@ -348,7 +693,7 @@ class ContractTests(unittest.TestCase):
                            ("c.json", '[{"organisation_number":"923609016"},"810034882"]'),
                            ("d.json", '{"organisations":["923609016","810034882"]}')):
             p = self.tmp / name
-            p.write_text(body)
+            p.write_text(body, encoding="utf-8")
             self.assertEqual(read_manifest(p)[0], ["923609016", "810034882"], name)
 
     def test_candidates(self):
@@ -363,7 +708,7 @@ class ContractTests(unittest.TestCase):
         import signalpost.cli as cli
         import sys
         man = self.tmp / "in.jsonl"
-        man.write_text(f'{{"organisation_number":"{ORG}","name":"FIXTURE INDUSTRIER AS"}}\nbad\n')
+        man.write_text(f'{{"organisation_number":"{ORG}","name":"FIXTURE INDUSTRIER AS"}}\nbad\n', encoding="utf-8")
         out, rep = self.tmp / "o.jsonl", self.tmp / "r.json"
         orig = cli.Fetcher
         cli.Fetcher = lambda *a, **k: FakeFetcher()
@@ -372,13 +717,13 @@ class ContractTests(unittest.TestCase):
                     "--run-id", "t1", "--expected-count", "2", "--state", str(self.tmp / "s1")]
             sys.argv = argv
             self.assertEqual(cli.main(), 0)
-            self.assertEqual(len(out.read_text().splitlines()), 2)
-            self.assertEqual(json.loads(rep.read_text())["silent_drops"], 0)
+            self.assertEqual(len(out.read_text(encoding="utf-8").splitlines()), 2)
+            self.assertEqual(json.loads(rep.read_text(encoding="utf-8"))["silent_drops"], 0)
             out2 = self.tmp / "o2.jsonl"
             sys.argv = ["signalpost", "run", "--organisations", str(man), "--output", str(out2), "--report", str(rep),
                         "--run-id", "t2", "--expected-count", "2", "--state", str(self.tmp / "s2"), "--previous", str(out)]
             self.assertEqual(cli.main(), 0)
-            env = json.loads(out2.read_text().splitlines()[0])
+            env = json.loads(out2.read_text(encoding="utf-8").splitlines()[0])
             self.assertFalse(env["refresh"]["is_first_observation"])
             self.assertEqual([c for c in env["changes"] if c["change_type"] != "added"], [])
             sys.argv = ["signalpost", "run", "--organisations", str(man), "--output", str(out2), "--run-id", "t3",

@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import tempfile
+import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutTimeout
@@ -19,6 +20,7 @@ from urllib.parse import urlparse
 
 from . import sources as S
 from .core import AGENT_VERSION, Claim, Ctx, find_orgnums, is_valid, normalise, utcnow
+from .contract import check_file, validate  # noqa: F401  (re-exported)
 from .fetch import Fetcher
 
 FAMILIES = ["legal_identity", "financials", "leadership", "locations", "group_structure",
@@ -61,29 +63,31 @@ class State:
 
 def seed_from_envelopes(state: "State", path: str | Path) -> int:
     """Previous-snapshot input: rebuild per-company snapshots from an earlier envelope JSONL.
-    Existing state wins; this only fills gaps."""
+    Existing state wins; this only fills gaps. Malformed lines/envelopes are skipped, never fatal."""
     n = 0
-    for line in Path(path).read_text("utf-8").splitlines():
+    text = Path(path).read_bytes().decode("utf-8-sig", "replace")
+    for line in text.splitlines():
         if not line.strip():
             continue
         try:
             env = json.loads(line)
-        except Exception:
+            org = env.get("organisation_number")
+            if not isinstance(org, str) or not is_valid(org) or state.load(org) is not None:
+                continue
+            ts = (env.get("refresh") or {}).get("last_refreshed_at") or (env.get("run") or {}).get("completed_at")
+            claims = {}
+            for c in env.get("claims") or []:
+                ok = c.get("availability") == "available"
+                claims[c["claim_key"]] = {"family": c.get("field_family"), "field": c.get("field"),
+                                          "availability": c.get("availability"),
+                                          "hash": vhash(c.get("value")) if ok else None,
+                                          "value": c.get("value") if ok else None,
+                                          "evidence_ids": c.get("evidence_ids", []), "first": ts, "last": ts}
+            runs = int((env.get("refresh") or {}).get("run_count", 1))
+            state.save(org, {"claims": claims, "last_run_at": ts, "runs": runs})
+            n += 1
+        except (ValueError, KeyError, TypeError, AttributeError, RecursionError):
             continue
-        org = env.get("organisation_number")
-        if not org or state.load(org) is not None:
-            continue
-        ts = (env.get("refresh") or {}).get("last_refreshed_at") or (env.get("run") or {}).get("completed_at")
-        claims = {}
-        for c in env.get("claims", []):
-            ok = c.get("availability") == "available"
-            claims[c["claim_key"]] = {"family": c.get("field_family"), "field": c.get("field"),
-                                      "availability": c.get("availability"),
-                                      "hash": vhash(c.get("value")) if ok else None,
-                                      "value": c.get("value") if ok else None,
-                                      "evidence_ids": c.get("evidence_ids", []), "first": ts, "last": ts}
-        state.save(org, {"claims": claims, "last_run_at": ts, "runs": int((env.get("refresh") or {}).get("run_count", 1))})
-        n += 1
     return n
 
 
@@ -107,21 +111,40 @@ def dedupe(claims: list[Claim]) -> list[Claim]:
     return list(best.values())
 
 
+TRANSIENT = ("failed", "blocked")   # the source could not be read this time: says nothing about the fact itself
+
+
 def diff(prev: dict | None, claims: list[Claim]) -> tuple[list[dict], dict]:
+    """Typed change detection. A claim whose source was temporarily unreadable keeps its previous supported value
+    (carried forward untouched) and produces no change; a claim in a family that was not attempted this run (budget
+    cut, outage) is carried forward too. Only a successful look that finds something different is a change."""
     now = utcnow()
-    cur = {c.claim_key: {"family": c.field_family, "field": c.field, "availability": c.availability,
-                         "hash": vhash(c.value) if c.availability == "available" else None,
-                         "value": c.value if c.availability == "available" else None,
-                         "evidence_ids": c.evidence_ids, "first": now, "last": now} for c in claims}
     old = (prev or {}).get("claims") or {}
+    cur: dict[str, dict] = {}
+    for c in claims:
+        rec = {"family": c.field_family, "field": c.field, "availability": c.availability,
+               "hash": vhash(c.value) if c.availability == "available" else None,
+               "value": c.value if c.availability == "available" else None,
+               "evidence_ids": c.evidence_ids, "first": now, "last": now}
+        o = old.get(c.claim_key)
+        if c.availability in TRANSIENT and o and o.get("hash"):
+            cur[c.claim_key] = {**o, "last_attempt": {"state": c.availability, "at": now}}   # carried forward
+            continue
+        if o and o.get("hash") and o.get("hash") == rec["hash"]:
+            rec["first"] = o.get("first") or now
+        cur[c.claim_key] = rec
+    looked = {c.field_family for c in claims if c.availability in ("available", "not_available", "not_applicable")}
+    carried = {k for k, r in cur.items() if r.get("last_attempt")}
+    for k, o in old.items():
+        if k not in cur and o.get("hash") and o.get("family") not in looked:
+            cur[k] = o                      # family not examined this run: keep what we knew
+            carried.add(k)
     changes: list[dict] = []
-    for k, r in cur.items():
-        o = old.get(k)
-        if o and o.get("hash") == r["hash"]:
-            r["first"] = o.get("first") or now
     if prev is not None:
         def mat(r): return "material" if r["family"] in MATERIAL else "minor"
         for k, r in cur.items():
+            if k in carried:
+                continue
             o = old.get(k)
             if r["availability"] == "available" and (o is None or o.get("hash") is None):
                 changes.append({"claim_key": k, "field": r["field"], "change_type": "added",
@@ -179,6 +202,17 @@ def synthesise(org: str, ident: dict, claims: list[Claim], changes: list[dict], 
             ([f"a profit for the year of {int(prof.value):,} {prof.unit}".replace(",", " ")] if prof else [])
     s.append(f"The latest filed annual accounts report {' and '.join(parts)}" + (f" for the period ending {per.value}" if per else "") + "."
              if parts else "No filed annual-accounts figures were retrievable from the accounts register.")
+    hist = take("financials|history")
+    if hist and isinstance(hist.value, list) and len(hist.value) >= 2:
+        a_, b_ = hist.value[-2], hist.value[-1]
+        if isinstance(a_.get("revenue"), (int, float)) and isinstance(b_.get("revenue"), (int, float)):
+            n1, n2 = f"{int(a_['revenue']):,}".replace(",", " "), f"{int(b_['revenue']):,}".replace(",", " ")
+            pct = ""
+            if a_["revenue"]:
+                d = (b_["revenue"] - a_["revenue"]) / abs(a_["revenue"]) * 100
+                pct = f", {'up' if d >= 0 else 'down'} {abs(d):.1f}%"
+            s.append(f"Operating revenue moved from {n1} {hist.unit} ({a_['period']}) to {n2} {hist.unit} ({b_['period']}){pct}, "
+                     "both 12-month filings.")
     emp, wp = take("workforce|registered_employees"), take("locations|registered_workplace_count")
     bits = ([f"{emp.value} registered employees"] if emp else []) + ([f"{wp.value} registered workplace(s)"] if wp else [])
     if bits:
@@ -209,33 +243,8 @@ def synthesise(org: str, ident: dict, claims: list[Claim], changes: list[dict], 
             "grounded_claim_keys": sorted(set(used))}
 
 
-def validate(env: dict) -> list[str]:
-    """Hard contract gates; any issue blocks submission."""
-    out: list[str] = []
-    ids = {e["id"]: e for e in env["evidence"]}
-    keys = [c["claim_key"] for c in env["claims"]]
-    if len(keys) != len(set(keys)):
-        out.append("duplicate claim_key")
-    for c in env["claims"]:
-        if c["availability"] == "available":
-            if not c["evidence_ids"] or not c["entity_link"]:
-                out.append(f"{c['claim_key']}: available without evidence/entity link")
-            for i in c["evidence_ids"]:
-                e = ids.get(i)
-                if not e:
-                    out.append(f"{c['claim_key']}: dangling evidence {i}")
-                    continue
-                if not (e["claim_span"] and e["content_sha256"] and e["source_policy"] and e["retrieved_at"]):
-                    out.append(f"{c['claim_key']}: incomplete evidence {i}")
-                if c["field_family"] in ("financials", "public_activity") and c["field"] != "open_position_count" \
-                        and not (e.get("publication_date") or e.get("reporting_period")):
-                    out.append(f"{c['claim_key']}: dated family without a date")
-        elif isinstance(c["value"], (int, float)) and not isinstance(c["value"], bool):
-            out.append(f"{c['claim_key']}: absence rendered as a number")
-    for k in env["synthesis"]["grounded_claim_keys"]:
-        if k not in keys:
-            out.append(f"synthesis references unknown claim {k}")
-    return out
+class Cancelled(BaseException):
+    """Raised inside a worker whose company already received a terminal envelope."""
 
 
 class Agent:
@@ -243,6 +252,35 @@ class Agent:
         self.f, self.state, self.enable_site = fetcher, state, enable_site
         self.soft_deadline = soft_deadline  # time.monotonic() value; after it, registry-only mode
         self.degraded = 0
+        self._gate = threading.Lock()
+        self._sealed: set[str] = set()   # orgs whose terminal envelope has been issued by the batch runner
+        self._saved: set[str] = set()    # orgs whose worker already committed state
+
+    # ---- cancellation gate: after seal(), a worker can no longer write state ----
+    def seal(self, raw: str) -> bool:
+        """Mark the company terminal. Returns False if its worker had already committed state (so the worker's
+        own envelope is the consistent answer and must be used instead of a timeout envelope)."""
+        key = normalise(raw) or str(raw)[:32]
+        with self._gate:
+            if key in self._saved:
+                return False
+            self._sealed.add(key)
+            return True
+
+    def _sealed_now(self, org: str) -> bool:
+        with self._gate:
+            return org in self._sealed
+
+    def _check(self, org: str) -> None:
+        if self._sealed_now(org):
+            raise Cancelled(org)
+
+    def _commit(self, org: str, snap: dict) -> None:
+        with self._gate:  # check-and-write is atomic with respect to seal()
+            if org in self._sealed:
+                raise Cancelled(org)
+            self.state.save(org, snap)
+            self._saved.add(org)
 
     def _shell(self, org, valid, ident, claims, evidence, errors, run_id, started, t0, terminal=None,
                note_refresh=None) -> dict:
@@ -270,7 +308,7 @@ class Agent:
                "run": {"run_id": run_id, "agent_version": AGENT_VERSION, "started_at": started,
                        "completed_at": utcnow(), "terminal_status": terminal}}
         if valid and terminal != "failed" or (valid and cov["claims_available"]):
-            self.state.save(org, snap)  # a failed refresh keeps the last supported state
+            self._commit(org, snap)  # a failed refresh keeps the last supported state
         return env
 
     def _terminal(self, raw, kind: str, note: str, valid: bool) -> dict:
@@ -288,6 +326,29 @@ class Agent:
         return self._terminal(raw, "TimeoutError", f"per-company budget of {limit}s exceeded", is_valid(raw))
 
     def run_one(self, raw: str, hint: dict | None = None) -> dict:
+        try:
+            return self._run_one(raw, hint)
+        except Cancelled:
+            return {}  # discarded by the runner: a timeout envelope was already issued
+
+    def _group_hosts(self, ident: dict) -> set[str]:
+        """Registry websites of the parent unit and of its parent (two levels). A subsidiary that lists one of these
+        as its own is pointing at the group's site."""
+        hosts: set[str] = set()
+        nxt, hops = ident.get("parent_orgnr"), 0
+        while nxt and hops < 2 and is_valid(nxt):
+            d, _ = self.f.get_json(f"{S.ER}/enheter/{nxt}", ttl=21_600)
+            if not isinstance(d, dict):
+                break
+            site = d.get("hjemmeside")
+            if isinstance(site, str) and site.strip():
+                h = urlparse(site if "//" in site else "//" + site).netloc.lower().removeprefix("www.")
+                if h:
+                    hosts.add(h)
+            nxt, hops = d.get("overordnetEnhet") if isinstance(d.get("overordnetEnhet"), str) else None, hops + 1
+        return hosts
+
+    def _run_one(self, raw: str, hint: dict | None = None) -> dict:
         t0, started, run_id = time.monotonic(), utcnow(), uuid.uuid4().hex[:12]
         org = normalise(raw)
         if not is_valid(org):
@@ -315,10 +376,10 @@ class Agent:
 
         for label, url, mapper, fam, fld in (
                 ("roles", f"{S.ER}/enheter/{org}/roller", S.registry_roles, "leadership", "role_holders"),
-                ("subunits", f"{S.ER}/underenheter?overordnetEnhet={org}&size=100", S.registry_subunits, "locations", "registered_workplaces"),
+                ("subunits", None, S.registry_subunits, "locations", "registered_workplaces"),
                 ("accounts", f"{S.RR}/{org}", S.registry_accounts, "financials", "latest_annual_accounts")):
             try:
-                payload, rr = self.f.get_json(url, ttl=21_600)
+                payload, rr = S.fetch_subunits(self.f, org) if label == "subunits" else self.f.get_json(url, ttl=21_600)
                 if payload is None:
                     st = "blocked" if rr.blocked_by_robots else "not_available" if rr.status in (404, 204) else "failed"
                     c.absent(fam, fld, st, f"{label} endpoint returned no payload ({rr.error})")
@@ -327,6 +388,7 @@ class Agent:
             except Exception as e:  # noqa: BLE001
                 fail(f"registry.{label}", e)
                 c.absent(fam, fld, "failed", f"{label} raised {type(e).__name__}")
+        self._check(org)
         late = self.soft_deadline is not None and time.monotonic() > self.soft_deadline
         if late:
             self.degraded += 1
@@ -334,11 +396,13 @@ class Agent:
                            "message": "time budget nearly spent: external sources skipped, registry data kept",
                            "retryable": True, "occurred_at": utcnow()})
         for label, fn in (() if late else (("wikidata", S.wikidata), ("gleif", S.gleif))):
+            self._check(org)
             try:
                 fn(c, self.f)
             except Exception as e:  # noqa: BLE001
                 fail(f"connector.{label}", e)
 
+        self._check(org)
         if self.enable_site and not late:
             try:
                 extra = [x.value for x in c.claims if x.field == "wikidata_official_website" and x.availability == "available"]
@@ -356,12 +420,14 @@ class Agent:
                                 off.add(host)
                     places = [ident.get("postal_place"), ident.get("municipality"), (hint or {}).get("municipality")]
                     res = S.verify_site(c, self.f, ident.get("legal_name") or "", cands, official=off,
-                                        places=places, postal=ident.get("postal_code"))
+                                        places=places, postal=ident.get("postal_code"),
+                                        group_hosts=self._group_hosts(ident))
                     if res:
                         url, hr, pg, link = res
-                        S.mine_site(c, self.f, url, hr, pg, link)
+                        S.mine_site(c, self.f, url, hr, pg, link, name=ident.get("legal_name") or "")
             except Exception as e:  # noqa: BLE001
                 fail("website", e)
+        self._check(org)
         return self._shell(org, True, ident, c.claims, c.evidence, errors, run_id, started, t0)
 
 
@@ -371,23 +437,40 @@ def _org_from(obj) -> tuple[str, dict]:
             if obj.get(k) not in (None, ""):
                 return str(obj[k]).strip(), obj
         return "", obj
+    if isinstance(obj, (list, tuple, set)):
+        return "", {}
     return str(obj).strip(), {}
 
 
-def read_manifest(path: str | Path) -> tuple[list[str], dict[str, dict]]:
-    """Accept JSONL objects, a JSON array/object, or plain text (one number per line,
-    first CSV column). Returns ordered unique inputs and optional per-org hints."""
-    raw = Path(path).read_text("utf-8-sig")
+class ManifestError(ValueError):
+    """The input file cannot be used at all (missing, unreadable, not text, or empty)."""
+
+
+def read_manifest(path: str | Path, stats: dict | None = None) -> tuple[list[str], dict[str, dict]]:
+    """Accept JSONL objects, a JSON array/object, or plain text (one number per line, first CSV column).
+    Returns ordered unique inputs and optional per-org hints. Malformed lines are kept as inputs (they receive a
+    typed `not_applicable` envelope) rather than aborting the batch; only an unreadable file raises ManifestError."""
+    try:
+        raw_bytes = Path(path).read_bytes()
+    except OSError as e:
+        raise ManifestError(f"cannot read input file {path}: {e.strerror or type(e).__name__}") from None
+    if raw_bytes[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        raw = raw_bytes.decode("utf-16", "replace")           # Windows PowerShell redirects write UTF-16
+    elif b"\x00" in raw_bytes[:4096]:
+        raise ManifestError("input file looks binary (NUL bytes); expected JSON, JSONL or text")
+    else:
+        raw = raw_bytes.decode("utf-8-sig", "replace")
     items: list = []
     txt = raw.strip()
     parsed = False
-    if txt[:1] in "[{":
+    if txt[:1] in ("[", "{"):
         try:
             data = json.loads(txt)
             if isinstance(data, dict):
                 data = data.get("organisations") or data.get("companies") or data.get("items") or [data]
-            items, parsed = list(data), True
-        except Exception:
+            if isinstance(data, list):
+                items, parsed = data, True
+        except (ValueError, RecursionError):
             parsed = False
     if not parsed:
         for line in raw.splitlines():
@@ -398,21 +481,29 @@ def read_manifest(path: str | Path) -> tuple[list[str], dict[str, dict]]:
                 try:
                     items.append(json.loads(line))
                     continue
-                except Exception:
+                except (ValueError, RecursionError):
                     pass
             first = line.split(",")[0].split(";")[0].split("\t")[0].strip().strip('"')
             if first.lower().startswith(("org", "id")) and not first[:1].isdigit():
                 continue
-            items.append(first)
-    orgs, hints, seen = [], {}, set()
+            items.append(first[:64])
+    orgs, hints, seen, lines = [], {}, set(), 0
     for it in items:
         o, hint = _org_from(it)
-        if not o or o in seen:
+        o = o[:64]
+        key = normalise(o) or o
+        if o:
+            lines += 1
+        if not o or key in seen:
             continue
-        seen.add(o)
+        seen.add(key)
         orgs.append(o)
         if hint:
-            hints[normalise(o)] = hint
+            hints[normalise(o)] = {k: v for k, v in hint.items() if isinstance(k, str)}
+    if not orgs:
+        raise ManifestError(f"no organisation numbers found in {path}")
+    if stats is not None:
+        stats.update(input_lines=lines, distinct_inputs=len(orgs), duplicate_input_lines=lines - len(orgs))
     return orgs, hints
 
 
@@ -420,24 +511,75 @@ def read_inputs(path: str | Path) -> list[str]:
     return read_manifest(path)[0]
 
 
+class Ledger:
+    """Append-only, fsync'd record of finished envelopes so an interrupted batch can resume without redoing or
+    duplicating work. One line per organisation; the last line for an organisation wins. Only envelopes that carry
+    data (`completed`/`partial`) are reused; `failed` ones (timeouts, outages) are retried on resume."""
+
+    def __init__(self, path: str | Path, agent_version: str = AGENT_VERSION):
+        self.path, self.version = Path(path), agent_version
+        self.done: dict[str, dict] = {}
+        self._lock = threading.Lock()
+        if self.path.exists():
+            for line in self.path.read_bytes().decode("utf-8", "replace").splitlines():
+                try:
+                    env = json.loads(line)
+                    org = env["organisation_number"]
+                    if env["run"]["agent_version"] == self.version and env["run"]["terminal_status"] in ("completed", "partial"):
+                        self.done[org] = env
+                except (ValueError, KeyError, TypeError):
+                    continue          # a torn last line from a crash is simply ignored
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def get(self, raw: str) -> dict | None:
+        return self.done.get(normalise(raw))
+
+    def record(self, env: dict) -> None:
+        with self._lock, open(self.path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(env, ensure_ascii=False) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+
+
 def run_batch(inputs: list[str], agent: Agent, *, workers: int = 16, company_timeout: float = 150.0,
               hints: dict[str, dict] | None = None, hard_deadline: float | None = None,
-              on_progress=None) -> list[dict]:
-    """Always returns len(inputs) envelopes in input order, even past the hard deadline."""
+              on_progress=None, ledger: Ledger | None = None) -> list[dict]:
+    """Always returns len(inputs) envelopes in input order, even past the hard deadline. Once a timeout or
+    isolation envelope is issued for a company its worker is sealed: it can no longer write state."""
     hints = hints or {}
     ex = ThreadPoolExecutor(max_workers=workers)
-    futs = [ex.submit(agent.run_one, raw, hints.get(normalise(raw))) for raw in inputs]
+    resumed = {raw: ledger.get(raw) for raw in inputs} if ledger else {}
+    futs = [None if resumed.get(raw) else ex.submit(agent.run_one, raw, hints.get(normalise(raw))) for raw in inputs]
     out = []
     for i, (raw, fu) in enumerate(zip(inputs, futs), 1):
+        if fu is None:
+            out.append(resumed[raw])
+            if on_progress and (i % 10 == 0 or i == len(inputs)):
+                on_progress(i, len(inputs))
+            continue
         limit = company_timeout
         if hard_deadline is not None:
             limit = max(0.01, min(company_timeout, hard_deadline - time.monotonic()))
+        env = None
         try:
-            out.append(fu.result(timeout=limit))
+            env = fu.result(timeout=limit)
         except FutTimeout:
-            out.append(agent.timeout_envelope(raw, limit))
+            if agent.seal(raw):
+                fu.cancel()
+                env = agent.timeout_envelope(raw, limit)
+            else:  # worker committed in the instant the timer fired: its envelope matches the saved state
+                try:
+                    env = fu.result(timeout=30)
+                except Exception as e:  # noqa: BLE001
+                    env = agent._terminal(raw, type(e).__name__, f"isolated failure: {str(e)[:200]}", is_valid(raw))
         except Exception as e:  # noqa: BLE001
-            out.append(agent._terminal(raw, type(e).__name__, f"isolated failure: {str(e)[:200]}", is_valid(raw)))
+            agent.seal(raw)
+            env = agent._terminal(raw, type(e).__name__, f"isolated failure: {str(e)[:200]}", is_valid(raw))
+        if not env:  # worker was cancelled before the runner sealed it (should not happen); never emit nothing
+            env = agent._terminal(raw, "Cancelled", "worker cancelled before completion", is_valid(raw))
+        out.append(env)
+        if ledger:
+            ledger.record(env)
         if on_progress and (i % 10 == 0 or i == len(inputs)):
             on_progress(i, len(inputs))
     ex.shutdown(wait=False, cancel_futures=True)

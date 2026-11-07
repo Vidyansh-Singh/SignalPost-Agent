@@ -8,41 +8,43 @@ from pathlib import Path
 
 from .core import AGENT_VERSION
 from .fetch import Fetcher
-from .pipeline import Agent, State, atomic_write, read_manifest, run_batch, seed_from_envelopes, validate
+from .contract import check_file, validate
+from .pipeline import Agent, Ledger, ManifestError, State, atomic_write, read_manifest, run_batch, seed_from_envelopes
 from .render import render
-
-
-def check_file(path: Path) -> tuple[int, list[str]]:
-    issues, seen, n = [], set(), 0
-    for line in path.read_text("utf-8").splitlines():
-        if not line.strip():
-            continue
-        n += 1
-        env = json.loads(line)
-        if env["organisation_number"] in seen:
-            issues.append(f"duplicate envelope for {env['organisation_number']}")
-        seen.add(env["organisation_number"])
-        issues += [f"{env['organisation_number']}: {m}" for m in validate(env)]
-    return n, issues
 
 
 def cmd_run(a) -> int:
     src = a.organisations or a.input
     dst = Path(a.output or a.out or "out/profiles.jsonl")
-    inputs, hints = read_manifest(src)
+    try:
+        mstats: dict = {}
+        inputs, hints = read_manifest(src, mstats)
+    except ManifestError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 2
     dst.parent.mkdir(parents=True, exist_ok=True)
     print(f"[signalpost {AGENT_VERSION}] {len(inputs)} inputs from {src}", flush=True)
     t0 = time.monotonic()
     state = State(a.state or None)
-    if a.previous and Path(a.previous).exists():
-        print(f"seeded {seed_from_envelopes(state, a.previous)} previous snapshots", flush=True)
+    if a.previous:
+        try:
+            print(f"seeded {seed_from_envelopes(state, a.previous)} previous snapshots", flush=True)
+        except OSError as e:
+            print(f"warning: previous snapshot {a.previous} unreadable ({e.strerror}); treating all companies as first observation",
+                  file=sys.stderr)
     f = Fetcher(a.cache or None, timeout=a.timeout, delay=a.delay, obey_robots=True)
     soft = hard = None
     if a.time_budget and a.time_budget > 0:
         soft, hard = time.monotonic() + 0.70 * a.time_budget, time.monotonic() + 0.95 * a.time_budget
     agent = Agent(f, state, soft_deadline=soft)
+    ledger = Ledger(a.ledger or dst.with_suffix(".ledger.jsonl")) if a.resume or a.ledger else None
+    if ledger is not None and not a.resume and ledger.path.exists():
+        ledger.path.unlink()          # a fresh run never inherits an old ledger
+        ledger = Ledger(ledger.path)
+    if ledger is not None and a.resume:
+        print(f"resuming: {sum(1 for x in inputs if ledger.get(x))} of {len(inputs)} companies already finished", flush=True)
     envs = run_batch(inputs, agent, workers=a.workers or a.concurrency, company_timeout=a.company_timeout,
-                     hints=hints, hard_deadline=hard,
+                     hints=hints, hard_deadline=hard, ledger=ledger,
                      on_progress=lambda i, n: print(f"  progress {i}/{n}  ({time.monotonic() - t0:.0f}s)", flush=True))
     atomic_write(dst, "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in envs))  # replace, never append
     issues = [f"{e['organisation_number']}: {m}" for e in envs for m in validate(e)]
@@ -50,13 +52,15 @@ def cmd_run(a) -> int:
     for e in envs:
         term[e["run"]["terminal_status"]] = term.get(e["run"]["terminal_status"], 0) + 1
     expected = a.expected_count if a.expected_count is not None else len(inputs)
-    report = {"agent_version": AGENT_VERSION, "run_id": a.run_id, "inputs": len(inputs), "expected_count": expected,
+    report = {"agent_version": AGENT_VERSION, "run_id": a.run_id, "inputs": len(inputs), **mstats, "expected_count": expected,
               "envelopes": len(envs), "distinct_organisations": len({e["organisation_number"] for e in envs}),
               "silent_drops": max(0, len(inputs) - len(envs)), "terminal_status": term,
               "contract_issues": len(issues), "issues_sample": issues[:25],
               "material_changes": sum(e["refresh"].get("material_change_count", 0) for e in envs),
               "wall_clock_s": round(time.monotonic() - t0, 1), "requests": f.requests, "cache_hits": f.cache_hits,
-              "third_party_cost_usd": 0.0, "degraded_registry_only": agent.degraded,
+              "third_party_cost_usd": 0.0, "robots_denied": f.robots_denied,
+              "robots_by_host": {h: {"decision": d[0], **({"detail": f.robots_detail[h]} if h in f.robots_detail else {})}
+                                 for h, d in sorted(f._robots.items())}, "degraded_registry_only": agent.degraded,
               "family_hit_rate": {fam: round(sum(1 for e in envs if e["coverage"]["families"].get(fam, {}).get("available")) / max(len(envs), 1), 3)
                                   for fam in envs[0]["coverage"]["families"]} if envs else {}}
     rp = Path(a.report) if a.report else dst.with_suffix(".report.json")
@@ -68,6 +72,10 @@ def cmd_run(a) -> int:
                      ensure_ascii=False) + "\n" for e in envs))
     if a.site:
         print(f"rendered {render(envs, a.site)} pages -> {a.site}/index.html")
+    nfail = term.get("failed", 0)
+    if envs and nfail * 2 > len(envs):
+        print(f"WARNING: {nfail} of {len(envs)} companies ended 'failed'. If this is not expected, the data sources may be "
+              "unreachable from this machine: run `python run.py diagnose` first.", file=sys.stderr)
     ok = len(envs) == len(inputs) == expected and report["distinct_organisations"] == len(envs) and not issues
     if not ok:
         print(f"FAILED CONTRACT CHECK: inputs={len(inputs)} expected={expected} envelopes={len(envs)} issues={len(issues)}", file=sys.stderr)
@@ -77,6 +85,21 @@ def cmd_run(a) -> int:
         import os
         os._exit(code)  # abandoned worker threads must not delay process exit
     return code
+
+
+def cmd_diagnose() -> int:
+    """Quick connectivity check with plain reasons, for when a run returns nothing."""
+    from .sources import ER
+    f = Fetcher(None, timeout=15, delay=0)
+    bad = 0
+    for label, url in (("Enhetsregisteret", f"{ER}/enheter/923609016"), ("Regnskapsregisteret", "https://data.brreg.no/regnskapsregisteret/regnskap/923609016"),
+                       ("GLEIF", "https://api.gleif.org/api/v1/lei-records?page[size]=1")):
+        r = f.get(url)
+        print(f"{'OK  ' if r.ok else 'FAIL'} {label}: status={r.status} error={r.error}")
+        bad += not r.ok
+    for h, (kind, _, _) in f._robots.items():
+        print(f"robots {h}: {kind} {f.robots_detail.get(h, '')}")
+    return 1 if bad else 0
 
 
 def main() -> int:
@@ -98,10 +121,16 @@ def main() -> int:
     r.add_argument("--site", default="")
     r.add_argument("--workers", type=int, default=0)
     r.add_argument("--concurrency", type=int, default=16)
+    r.add_argument("--resume", action="store_true", help="reuse finished companies from the ledger of an interrupted run")
+    r.add_argument("--ledger", help="ledger file (default: <output>.ledger.jsonl when --resume is given)")
     r.add_argument("--time-budget", type=float, default=0, help="total seconds allowed; 0 = unlimited. At 70%% external sources are skipped, at 95%% remaining companies get a timeout envelope")
     r.add_argument("--delay", type=float, default=1.0)
     r.add_argument("--timeout", type=float, default=15.0)
     r.add_argument("--company-timeout", type=float, default=150.0)
+    d = sub.add_parser("diagnose", help="check that the data sources are reachable from this machine")
+    m = sub.add_parser("measure", help="local quality metrics for an envelope file (not an official score)")
+    m.add_argument("--file", required=True)
+    m.add_argument("--inputs", help="the input manifest, to check one envelope per input")
     v = sub.add_parser("validate")
     v.add_argument("--file", required=True)
     a = ap.parse_args()
@@ -109,7 +138,14 @@ def main() -> int:
         if not (a.organisations or a.input):
             ap.error("run needs --organisations")
         return cmd_run(a)
-    n, issues = check_file(Path(a.file))
+    if a.cmd == "measure":
+        from .contract import measure
+        out = measure(a.file, a.inputs)
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+        return 0 if out["publication_ready"] else 1
+    if a.cmd == "diagnose":
+        return cmd_diagnose()
+    n, issues = check_file(a.file)
     print(f"{n} envelopes, {len(issues)} issues")
     for i in issues[:50]:
         print(" -", i)

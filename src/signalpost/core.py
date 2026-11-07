@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-AGENT_VERSION = "1.2.1"
+AGENT_VERSION = "1.5.0"
 STATES = {"available", "not_available", "blocked", "not_applicable", "ambiguous", "failed"}
 WEIGHTS = (3, 2, 7, 6, 5, 4, 3, 2)
 _ORG_IN_TEXT = re.compile(r"(?<!\d)(\d{3})[\s. ]?(\d{3})[\s. ]?(\d{3})(?!\d)")
