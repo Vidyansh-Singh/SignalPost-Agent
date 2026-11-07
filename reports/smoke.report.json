@@ -1,0 +1,1132 @@
+{
+  "agent_version": "1.5.0",
+  "run_id": "jbox-2",
+  "inputs": 100,
+  "input_lines": 100,
+  "distinct_inputs": 100,
+  "duplicate_input_lines": 0,
+  "expected_count": 100,
+  "envelopes": 100,
+  "distinct_organisations": 100,
+  "silent_drops": 0,
+  "terminal_status": {
+    "partial": 79,
+    "completed": 21
+  },
+  "contract_issues": 0,
+  "issues_sample": [],
+  "material_changes": 0,
+  "wall_clock_s": 40.1,
+  "requests": 690,
+  "cache_hits": 202,
+  "third_party_cost_usd": 0.0,
+  "robots_denied": 114,
+  "robots_by_host": {
+    "aaselektronikk.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "abcboligeiendom.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "aiota.no": {
+      "decision": "rules"
+    },
+    "alexanderolsenholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "andreassenlegetjeneste.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "angelholding.com": {
+      "decision": "unreachable",
+      "detail": "URLError: [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1082)"
+    },
+    "arkitektfirmajonvikoren.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "asgreinabyggassistanse.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "asperia.com": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "atgservices.com": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1082)"
+    },
+    "baerumeiendomstaksering.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "beaumontholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "bfrakt.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "blomsterbutikken.com": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "boarcollect.com": {
+      "decision": "allow",
+      "detail": "HTTP 404"
+    },
+    "bondeliaiborettslag.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "brafritidsogeiendomsutvikling.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "brandmaker.no": {
+      "decision": "rules"
+    },
+    "butikkdriftumazabalguerra.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "celarinvest.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "chrimoholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "compagnieteiendom.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "differnorgeholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "eiendomstilsynet.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "eklinikken.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "experienceandoy.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "farsundholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "fjellglodholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "gangstadbygg.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "guriasen.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "gustavseninvest.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "handlykkentrevare.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "hvittingfosssentrumborettslag.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "ihpinvest.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "insbosirnesfargeinterior.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "kagaflow.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "kjerringholmenvannogavlopslag.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "kronborgtechnologies.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "laeringsverkstedetbestumbarnehage.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "legehannahtangen.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "lilandkystfiske.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "markusstenevik.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "markveien6.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "melingsosv.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "musikkiinnlandet.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "nordlienogheddalboligstiftelse.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "notoinvest.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "novooi.com": {
+      "decision": "rules"
+    },
+    "oratrekkeselskap.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "ostgaardinvest.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "outofbounds.com": {
+      "decision": "rules"
+    },
+    "ovrevikdalselvakraftverk.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "pajomi.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "query.wikidata.org": {
+      "decision": "rules"
+    },
+    "ragd.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "rammel.com": {
+      "decision": "unreachable",
+      "detail": "URLError: timed out"
+    },
+    "rodmyrlia39.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "sabrurasteinkjer.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "saetherkraft.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "sameietlensmannstunet1.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "sandreassenholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "selvaagsfondtilalmennyttigeformalsti.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "sinsenveien43.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "skunkworks.com": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'skunkworks."
+    },
+    "skyamarkedsforing.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "smestadholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "stadion33.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "supermercado.com": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'supermercad"
+    },
+    "takstforumvest.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "teamtecwastetoenergy.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "terapeutpernillevilladsen.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "tomteveienutvikling.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "totoindustrier.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "tradhandverk.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "trafoveien5borettslag.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "tronsligarasjen.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "ugle.com": {
+      "decision": "allow",
+      "detail": "HTTP 404"
+    },
+    "vestpoolholding.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "voldslokkaparkeierseksjonssameie.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "whybeinvest.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.a-seafood.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.aas-elektronikk.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.aaselektronikk.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.abc-bolig-eiendom.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.abcboligeiendom.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.aelektronikk.no": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1082)"
+    },
+    "www.alexander-olsen-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.alexander.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.alexanderolsenholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.andreassen-legetjeneste.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.andreassenlegetjeneste.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.angel-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.angel.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.angelholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.arkitektfirma-jon-vikoren.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.arkitektfirma.no": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1082)"
+    },
+    "www.arkitektfirmajonvikoren.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.aseafood.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.asgreina-byggassistanse.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.asgreina.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.asgreinabyggassistanse.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.asker-media.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.askermedia.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.atg-services.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.atgservices.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.b-frakt.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.baerum-eiendomstaksering.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.baerum.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.baerumeiendomstaksering.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.base-home.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.basehome.no": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1082)"
+    },
+    "www.beaumont-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.beaumontholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.betakst.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.bfrakt.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.blomsterbutikken.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.blue-bay.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.bluebay.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.boar-collect.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.boarcollect.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.bondelia-i-borettslag.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.bondeliaiborettslag.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.bra-fritids-og-eiendomsutvikling.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.brafritidsogeiendomsutvikling.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.butikkdrift-umazabal-guerra.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.butikkdrift.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.butikkdriftumazabalguerra.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.carlin.no": {
+      "decision": "allow",
+      "detail": "HTTP 404"
+    },
+    "www.celar-invest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.celar.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.celarinvest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.chrimo-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.chrimo.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.chrimoholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.compagniet-eiendom.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.compagniet.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.compagnieteiendom.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.differ-norge-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.differnorgeholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.e-klinikken.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.eiendomstilsynet.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.eklinikken.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.experience-andoy.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.experienceandoy.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.farsund-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.farsund.no": {
+      "decision": "unreachable",
+      "detail": "URLError: timed out"
+    },
+    "www.farsundholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.fjellglod-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.fjellglodholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.gangstad-bygg.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.gangstad.no": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'www.gangsta"
+    },
+    "www.gangstadbygg.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.guriasen.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.gustavsen-invest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.gustavseninvest.no": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'www.gustavs"
+    },
+    "www.handlykken-trevare.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.handlykken.no": {
+      "decision": "unreachable",
+      "detail": "HTTP 500"
+    },
+    "www.handlykkentrevare.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.hoiland-gard.no": {
+      "decision": "rules"
+    },
+    "www.hoilandgard.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.hvittingfoss-sentrum-borettslag.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.hvittingfosssentrumborettslag.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ihp-invest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ihpinvest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.insbo-sirnes-farge-interior.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.insbosirnesfargeinterior.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.jb-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.jbholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.jott.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.kagaflow.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.kjerringholmen-vann-og-avlopslag.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.kjerringholmenvannogavlopslag.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.kronborg-technologies.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.kronborg.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.kronborgtechnologies.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.laeringsverkstedet-bestum-barnehage.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.laeringsverkstedet.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.laeringsverkstedetbestumbarnehage.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.lege-hanna-h-tangen.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.legehannahtangen.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.liland-kystfiske.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.lilandkystfiske.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.markus-stenevik.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.markusstenevik.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.markveien-6.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.markveien.no": {
+      "decision": "unreachable",
+      "detail": "HTTP 503"
+    },
+    "www.markveien6.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.melings-osv.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.melingsosv.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.minkrypto.no": {
+      "decision": "rules"
+    },
+    "www.musikk-i-innlandet.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.musikkiinnlandet.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.nordlien-og-heddal-boligstiftelse.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.nordlien.no": {
+      "decision": "unreachable",
+      "detail": "URLError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1082)"
+    },
+    "www.nordlienogheddalboligstiftelse.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.noto-invest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.notoinvest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ora-trekkeselskap.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.oratrekkeselskap.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.orbit-consulting.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.orbit.no": {
+      "decision": "rules"
+    },
+    "www.orbitconsulting.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ostgaard-invest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ostgaard.no": {
+      "decision": "unreachable",
+      "detail": "URLError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1082)"
+    },
+    "www.ostgaardinvest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ovre-vikdalselva-kraftverk.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ovrevikdalselvakraftverk.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.pajomi.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ragd.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.ramme-l.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.rammel.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.rbproffpartner.no": {
+      "decision": "rules"
+    },
+    "www.rd-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.rdholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.rodmyrlia-39.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.rodmyrlia.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.rodmyrlia39.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.s-andreassen-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.sabrura-steinkjer.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.sabrurasteinkjer.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.saether-kraft.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.saetherkraft.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.sago.no": {
+      "decision": "unreachable",
+      "detail": "URLError: timed out"
+    },
+    "www.sameiet-lensmannstunet-1.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.sameiet.no": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1082)"
+    },
+    "www.sameietlensmannstunet1.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.sandreassenholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.selvaags.no": {
+      "decision": "unreachable",
+      "detail": "URLError: timed out"
+    },
+    "www.selvaagsfondtilalmennyttigeformalsti.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.sember.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.sinsenveien-43.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.sinsenveien.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.sinsenveien43.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.skunkworks.no": {
+      "decision": "unreachable",
+      "detail": "HTTP 521"
+    },
+    "www.skya-markedsforing.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.skyamarkedsforing.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.smestad-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.smestad.no": {
+      "decision": "unreachable",
+      "detail": "URLError: timed out"
+    },
+    "www.smestadholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.stadion-33.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.stadion33.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.takstforum-vest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.takstforumvest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.teamtec-waste-to-energy.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.teamtecwastetoenergy.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.terapeut-pernille-villadsen.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.terapeutpernillevilladsen.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.tnbbl.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.tomteveien-utvikling.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.tomteveien.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.tomteveienutvikling.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.toto-industrier.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.totoindustrier.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.trad-handverk.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.tradhandverk.no": {
+      "decision": "unreachable",
+      "detail": "URLError: timed out"
+    },
+    "www.trafoveien-5-borettslag.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.trafoveien.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.trafoveien5borettslag.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.tronsligarasjen.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.vestpool-holding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.vestpool.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.vestpoolholding.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.vintage-capital.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.vintage.no": {
+      "decision": "dead",
+      "detail": "URLError: [WinError 10061] No connection could be made because the target machine actively refused it"
+    },
+    "www.vintagecapital.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.voldslokka-park-eierseksjonssameie.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.voldslokka.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.voldslokkaparkeierseksjonssameie.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.whybe-invest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.whybe.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.whybeinvest.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.wyssen-norge.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "www.wyssen.no": {
+      "decision": "dead",
+      "detail": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'www.wyssen."
+    },
+    "www.wyssennorge.no": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    },
+    "wyssennorge.com": {
+      "decision": "dead",
+      "detail": "URLError: [Errno 11001] getaddrinfo failed"
+    }
+  },
+  "degraded_registry_only": 0,
+  "family_hit_rate": {
+    "legal_identity": 1.0,
+    "financials": 1.0,
+    "leadership": 1.0,
+    "locations": 1.0,
+    "group_structure": 0.05,
+    "digital_presence": 0.07,
+    "social_profiles": 0.03,
+    "contact": 0.05,
+    "hiring": 0.0,
+    "public_activity": 0.02,
+    "workforce": 0.1,
+    "business_profile": 1.0
+  }
+}
